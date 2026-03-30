@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+
+# Local / secrets
+.env
+.streamlit/secrets.toml
+
+# Runtime learner state (regenerates; remove these lines if you want state in git)
+learner_state_*.json
+clkstrgy/.last_symbol.json
+
+# Stray duplicates in this folder (not streamlit test.py)
+/test
+online_learner.pyEnter
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

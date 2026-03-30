@@ -1,0 +1,4 @@
+# NasdaqTrader Streamlit app — install: pip install -r requirements.txt
+streamlit>=1.28
+pandas>=2.0
+yfinance>=0.2
