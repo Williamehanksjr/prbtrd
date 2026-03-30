@@ -1,0 +1,31 @@
+Everyday
+Command	What it does
+git status	Shows changed files and branch
+git diff	Uncommitted changes (working tree)
+git add .	Stage all changes in current folder
+git add path/to/file	Stage one file
+git commit -m "message"	Save staged changes with a message
+git log --oneline -10	Last 10 commits, one line each
+Remote (GitHub)
+Command	What it does
+git remote -v	Lists remotes and URLs
+git remote add origin <url>	Add remote named origin (once)
+git remote set-url origin <url>	Change origin URL
+git push -u origin main	Push branch main, set upstream
+git push	Push after upstream is set
+git pull	Fetch + merge from upstream branch
+Branches
+Command	What it does
+git branch	List local branches
+git checkout -b feature-name	New branch and switch to it
+git switch main	Switch to branch main
+git merge other-branch	Merge other-branch into current branch
+Undo / inspect
+Command	What it does
+git checkout -- file	Discard unstaged changes to file (careful)
+git restore file	Same idea (newer Git)
+git show	Latest commit details
+git show <commit>	One specific commit
+First-time on a machine (identity)
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
