@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: prbtrd
-Version: 0.1.0
-Summary: Probability-based long/short trader
-Requires-Python: >=3.10
-Description-Content-Type: text/markdown
-
-# prbtrd
-probability trader
