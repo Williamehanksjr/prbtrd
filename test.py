@@ -14,6 +14,16 @@ from online_learner import OnlineLearner
 
 st.set_page_config(page_title="NasdaqTrader", layout="wide")
 
+# Tighter main column so metrics + chart fit one viewport without excess scroll.
+_COMPACT_CSS = """
+<style>
+    .main .block-container { padding-top: 0.75rem; padding-bottom: 0.5rem; }
+    div[data-testid="stMetric"] { min-height: 0; padding: 0.2rem 0.35rem 0.35rem 0.35rem; }
+    div[data-testid="stMetric"] label { font-size: 0.72rem !important; }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] { font-size: 1.05rem !important; }
+</style>
+"""
+
 LOOKBACK_BARS = 600
 HORIZON_OPTIONS = [1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60]
 MODEL_SPEED_OPTIONS = ["Balanced", "Fast", "Very Fast"]
@@ -302,7 +312,7 @@ def render_chart(df: pd.DataFrame, symbol: str) -> None:
     fig, (ax1, ax2) = plt.subplots(
         2,
         1,
-        figsize=(12, 7),
+        figsize=(12, 5.5),
         sharex=True,
         gridspec_kw={"height_ratios": [3, 1]},
     )
@@ -311,8 +321,8 @@ def render_chart(df: pd.DataFrame, symbol: str) -> None:
     ax1.plot(ind.index, ind["ema21"], label="EMA21")
     ax1.plot(ind.index, ind["ema50"], label="EMA50")
     ax1.plot(ind.index, ind["ema200"], label="EMA200")
-    ax1.set_title(f"{symbol} Swing Chart")
-    ax1.legend()
+    ax1.set_title(f"{symbol} Swing Chart", fontsize=11)
+    ax1.legend(fontsize=8, loc="upper left")
     ax1.grid(True, alpha=0.3)
 
     ax2.plot(ind.index, ind["rsi"], label="RSI14")
@@ -320,7 +330,7 @@ def render_chart(df: pd.DataFrame, symbol: str) -> None:
     ax2.axhline(50, linestyle=":")
     ax2.axhline(30, linestyle="--")
     ax2.set_ylim(0, 100)
-    ax2.legend()
+    ax2.legend(fontsize=8, loc="upper left")
     ax2.grid(True, alpha=0.3)
 
     locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
@@ -341,7 +351,7 @@ def render_probability_panel(classic: ProbSnapshot, learner_result: dict) -> Non
     acc = float(learner_result.get("accuracy", 0.0)) if learner_result else 0.0
     pending = int(learner_result.get("pending_count", 0)) if learner_result else 0
 
-    fig, ax = plt.subplots(figsize=(12, 2.8))
+    fig, ax = plt.subplots(figsize=(12, 2.0))
     ax.set_xlim(-1.15, 1.15)
     ax.set_ylim(-1.2, 1.2)
     ax.set_yticks([])
@@ -358,7 +368,7 @@ def render_probability_panel(classic: ProbSnapshot, learner_result: dict) -> Non
         0.92,
         f"State: {classic.state}   Volume: {int(classic.quantity)}",
         transform=ax.transAxes,
-        fontsize=11,
+        fontsize=9,
         fontweight="bold",
         color=state_color,
         ha="left",
@@ -377,7 +387,7 @@ def render_probability_panel(classic: ProbSnapshot, learner_result: dict) -> Non
         0.74,
         learner_txt,
         transform=ax.transAxes,
-        fontsize=9,
+        fontsize=8,
         ha="left",
         family="monospace",
     )
@@ -399,8 +409,9 @@ def render_probability_panel(classic: ProbSnapshot, learner_result: dict) -> Non
 
 
 def main() -> None:
-    st.title("NasdaqTrader")
-    st.caption("Merged Streamlit app with indicator model + online learner")
+    st.markdown(_COMPACT_CSS, unsafe_allow_html=True)
+    st.markdown("### NasdaqTrader")
+    st.caption("Indicator model + online learner — controls in sidebar")
 
     with st.sidebar:
         symbol = st.selectbox(
@@ -444,22 +455,22 @@ def main() -> None:
     learner_p_up = float(learner_result.get("probability_up", 0.5)) if learner_result else 0.5
     learner_edge = float(learner_result.get("edge", 0.0)) if learner_result else 0.0
 
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Positive", f"{classic.positive:.1f}%")
-    c2.metric("Negative", f"{classic.negative:.1f}%")
-    c3.metric("Classic Edge", f"{classic.edge:.1f}")
-    c4.metric("Direction", classic.direction)
-    c5.metric("State", classic.state)
-    c6.metric("Learner P(up)", f"{learner_p_up * 100:.1f}%")
+    m1, m2, m3, m4, m5, m6, m7, m8, m9 = st.columns(9)
+    m1.metric("Pos+", f"{classic.positive:.1f}%")
+    m2.metric("Neg %", f"{classic.negative:.1f}%")
+    m3.metric("Edge", f"{classic.edge:.1f}")
+    m4.metric("Dir", classic.direction)
+    m5.metric("State", classic.state)
+    m6.metric("Lrn P↑", f"{learner_p_up * 100:.1f}%")
+    m7.metric("Long", f"{classic.long_probability:.1f}%")
+    m8.metric("Short", f"{classic.short_probability:.1f}%")
+    m9.metric("Lrn edge", f"{learner_edge:+.2f}")
 
-    c7, c8, c9 = st.columns(3)
-    c7.metric("Long Prob", f"{classic.long_probability:.1f}%")
-    c8.metric("Short Prob", f"{classic.short_probability:.1f}%")
-    c9.metric("Learner Edge", f"{learner_edge:+.2f}")
-
-    st.write(f"Last rerun: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    st.write(f"Auto refresh is {'ON' if auto_refresh else 'OFF'}")
-    st.write(f"Learner ready: {'Yes' if learner_ready else 'No'}")
+    st.caption(
+        f"{datetime.now().strftime('%H:%M:%S')} · "
+        f"Auto {'ON' if auto_refresh else 'OFF'} · "
+        f"Learner {'ready' if learner_ready else 'warming'}"
+    )
 
     render_chart(df.tail(100), symbol)
     render_probability_panel(classic, learner_result)
