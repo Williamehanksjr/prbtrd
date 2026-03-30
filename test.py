@@ -63,6 +63,32 @@ def _interval_minutes(interval_label: str) -> int:
     return mapping.get(interval_label, 15)
 
 
+# --- yfinance / pandas column safety (MultiIndex, duplicate OHLC names) ---
+
+
+def _one_series(df: pd.DataFrame, col: str) -> pd.Series:
+    """Return a single numeric Series for *col*; yfinance may yield a DataFrame of duplicate names."""
+    x = df[col]
+    if isinstance(x, pd.DataFrame):
+        x = x.iloc[:, 0]
+    return pd.to_numeric(x, errors="coerce")
+
+
+def _normalize_yfinance_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Flatten MultiIndex columns and drop duplicate labels so df['Close'] is unambiguous."""
+    if isinstance(df.columns, pd.MultiIndex):
+        df = df.copy()
+        df.columns = [str(c[0]) for c in df.columns]
+    return df.loc[:, ~df.columns.duplicated(keep="first")].copy()
+
+
+def _volume_series(df: pd.DataFrame) -> pd.Series:
+    """Aligned volume as float; zeros when column missing."""
+    if "Volume" not in df.columns:
+        return pd.Series(0.0, index=df.index)
+    return _one_series(df, "Volume").astype(float).fillna(0.0)
+
+
 @st.cache_data(ttl=5)
 def load_data(symbol: str, interval: str, period: str) -> pd.DataFrame:
     import yfinance as yf
@@ -77,8 +103,7 @@ def load_data(symbol: str, interval: str, period: str) -> pd.DataFrame:
     if df is None or df.empty:
         return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
 
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [c[0] for c in df.columns]
+    df = _normalize_yfinance_df(df)
 
     keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
     df = df[keep].dropna(subset=["Close"]).copy()
@@ -89,7 +114,7 @@ def load_data(symbol: str, interval: str, period: str) -> pd.DataFrame:
 
 def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
-    close = df["Close"].astype(float)
+    close = _one_series(df, "Close").astype(float)
 
     out["close"] = close
     out["ema21"] = close.ewm(span=21, adjust=False).mean()
@@ -123,7 +148,7 @@ def compute_probability(
 
     ind = compute_indicators(df)
     close = ind["close"]
-    vol = df["Volume"].astype(float).fillna(0.0) if "Volume" in df.columns else pd.Series(0.0, index=df.index)
+    vol = _volume_series(df)
     ret = close.pct_change().fillna(0.0)
 
     bar_minutes = _interval_minutes(interval_label)
@@ -288,16 +313,11 @@ def learner_step(df: pd.DataFrame, symbol: str, horizon_minutes: int) -> dict:
     if df.empty or "Close" not in df.columns:
         return {}
 
-    close_ser = df["Close"].astype(float).dropna()
-    vol_ser = (
-        df["Volume"].astype(float).fillna(0.0)
-        if "Volume" in df.columns
-        else pd.Series(0.0, index=df.index)
-    )
+    close_ser = _one_series(df, "Close").astype(float).dropna()
     if len(close_ser) < 20:
         return {}
 
-    vol_ser = vol_ser.reindex(close_ser.index).fillna(0.0)
+    vol_ser = _volume_series(df).reindex(close_ser.index).fillna(0.0)
     learner = get_learner(symbol, horizon_minutes)
     now_ts = float(pd.Timestamp(close_ser.index[-1]).timestamp())
     return learner.step(now_ts, close_ser.tolist(), vol_ser.tolist())

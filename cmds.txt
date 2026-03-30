@@ -8,6 +8,9 @@ git push -u origin main
 git remote set-url origin https://github.com/williamhanks/prbtrd.git
 git remote -v
 
+williamhanks@MacBookAir test % python3 -m streamlit run test.py --server.address 127.0.0.1 --server.port 8502
+
+
 
 Everyday
 Command	What it does
