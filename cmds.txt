@@ -3,14 +3,18 @@ python3 -m streamlit run test.py --server.address 127.0.0.1 --server.port 8502
 cd /Users/williamhanks/Developer/projects/test
 git remote add origin https://github.com/williamhanks/prbtrd.git
 git push -u origin main
-
+ngrok config add-authtoken 3BiEMXgK0BJ0XycbqviMc0RA3m2_2WABx5L83E53YVRGy6Dby
 
 git remote set-url origin https://github.com/williamhanks/prbtrd.git
 git remote -v
 
 williamhanks@MacBookAir test % python3 -m streamlit run test.py --server.address 127.0.0.1 --server.port 8502
 
-
+From here on, back up with normal commits and pushes:
+cd ~/Developer/projects/test
+git add -A
+git commit -m "Short note about what changed"
+git push
 
 Everyday
 Command	What it does

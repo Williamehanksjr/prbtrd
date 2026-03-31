@@ -37,10 +37,9 @@ class ProbSnapshot:
     long_probability: float
     short_probability: float
     direction: str
-    state: str
     horizon_minutes: int
     horizon_bars: int
-    quantity: float
+    quantity: float  # last bar volume (shares / units)
 
 
 def _interval_minutes(interval_label: str) -> int:
@@ -144,7 +143,7 @@ def compute_probability(
     horizon_minutes: int = 20,
 ) -> ProbSnapshot:
     if df.empty:
-        return ProbSnapshot(0.0, 0.0, 0.0, 50.0, 50.0, "NEUTRAL", "UNTRADABLE", horizon_minutes, 1, 0.0)
+        return ProbSnapshot(0.0, 0.0, 0.0, 50.0, 50.0, "NEUTRAL", horizon_minutes, 1, 0.0)
 
     ind = compute_indicators(df)
     close = ind["close"]
@@ -155,7 +154,7 @@ def compute_probability(
     horizon_bars = max(1, int(round(horizon_minutes / max(1, bar_minutes))))
     min_bars_required = max(40, horizon_bars * 15)
     if len(df) < min_bars_required:
-        return ProbSnapshot(0.0, 0.0, 0.0, 50.0, 50.0, "NEUTRAL", "UNTRADABLE", horizon_minutes, horizon_bars, 0.0)
+        return ProbSnapshot(0.0, 0.0, 0.0, 50.0, 50.0, "NEUTRAL", horizon_minutes, horizon_bars, 0.0)
 
     bar_m = float(bar_minutes)
 
@@ -262,28 +261,6 @@ def compute_probability(
     long_probability = 100.0 / (1.0 + math.exp(-edge / edge_scale))
     direction = "LONG" if edge >= 0 else "SHORT"
 
-    tradable = (
-        abs(edge) >= 12
-        and 0.70 <= vol_ratio <= 2.10
-        and volume_ratio >= 0.75
-        and 38 <= rsi <= 72
-    )
-    untradable = (
-        abs(edge) < 3.5
-        or vol_ratio < 0.35
-        or vol_ratio > 2.80
-        or volume_ratio < 0.45
-        or rsi < 20
-        or rsi > 80
-    )
-
-    if tradable:
-        state = "TRADABLE"
-    elif untradable:
-        state = "UNTRADABLE"
-    else:
-        state = "NEUTRAL"
-
     return ProbSnapshot(
         positive=max(0.0, min(100.0, positive)),
         negative=max(0.0, min(100.0, negative)),
@@ -291,7 +268,6 @@ def compute_probability(
         long_probability=long_probability,
         short_probability=100.0 - long_probability,
         direction=direction,
-        state=state,
         horizon_minutes=horizon_minutes,
         horizon_bars=horizon_bars,
         quantity=float(vol.iloc[-1]) if len(vol) else 0.0,
@@ -377,20 +353,15 @@ def render_probability_panel(classic: ProbSnapshot, learner_result: dict) -> Non
     ax.set_yticks([])
     ax.grid(True, alpha=0.2)
 
-    state_color = (
-        "green" if classic.state == "TRADABLE"
-        else "orange" if classic.state == "NEUTRAL"
-        else "red"
-    )
-
+    vol_display = f"{classic.quantity:,.0f}" if classic.quantity >= 1000 else f"{classic.quantity:.2f}"
     ax.text(
         0.01,
         0.92,
-        f"State: {classic.state}   Volume: {int(classic.quantity)}",
+        f"Volume: {vol_display}",
         transform=ax.transAxes,
         fontsize=9,
         fontweight="bold",
-        color=state_color,
+        color="#1a1a1a",
         ha="left",
     )
 
@@ -480,7 +451,7 @@ def main() -> None:
     m2.metric("Neg %", f"{classic.negative:.1f}%")
     m3.metric("Edge", f"{classic.edge:.1f}")
     m4.metric("Dir", classic.direction)
-    m5.metric("State", classic.state)
+    m5.metric("Volume", f"{classic.quantity:,.0f}" if classic.quantity >= 1000 else f"{classic.quantity:.2f}")
     m6.metric("Lrn P↑", f"{learner_p_up * 100:.1f}%")
     m7.metric("Long", f"{classic.long_probability:.1f}%")
     m8.metric("Short", f"{classic.short_probability:.1f}%")
